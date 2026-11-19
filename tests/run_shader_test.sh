@@ -27,7 +27,9 @@ shot post tests/data/lift.glsl "post shader loaded (1), nodes 0 wires 0"
 shot broken tests/data/broken.glsl "did not compile"
 cmp -s $R/shader_surface.png $R/shader_broken.png && bad "the surface shader and the broken one drew the same picture"
 
-cmp -s assets/shader_nodes.json "$CBRICKS_DIR/scripts/shader_nodes.json" && echo "ok   shader_nodes.json matches C-Bricks'" || bad "assets/shader_nodes.json differs from C-Bricks' scripts/shader_nodes.json: copy it over"
+if [ ! -f "$CBRICKS_DIR/scripts/shader_nodes.json" ]; then echo "skip shader_nodes.json sync (no C-Bricks checkout at $CBRICKS_DIR)"
+elif cmp -s assets/shader_nodes.json "$CBRICKS_DIR/scripts/shader_nodes.json"; then echo "ok   shader_nodes.json matches C-Bricks'"
+else bad "assets/shader_nodes.json differs from C-Bricks' scripts/shader_nodes.json: copy it over"; fi
 
 reg=$(cat "$CBRICKS_CONFIG/apps/c-vert" 2>/dev/null)
 [ -n "$reg" ] && [ -x "$reg" ] && [ "$(basename "$reg")" = "meshforge" ] && echo "ok   registered ($reg)" || bad "the program did not register itself in $CBRICKS_CONFIG/apps/c-vert"
