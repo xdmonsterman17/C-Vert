@@ -1,0 +1,381 @@
+{
+	"format": "c-bricks",
+	"frames": [
+		{
+			"color": "#3a5a7a",
+			"fit": true,
+			"id": 50,
+			"nodes": [
+				8,
+				9,
+				10,
+				11,
+				12,
+				13
+			],
+			"pos": [
+				1056.0,
+				128.0
+			],
+			"size": [
+				896.0,
+				384.000061035156
+			],
+			"title": "Frame: runs every frame until the window closes"
+		}
+	],
+	"next_id": 103,
+	"nodes": [
+		{
+			"args": {},
+			"fields": {},
+			"id": 1,
+			"links": {
+				"out": [
+					2
+				]
+			},
+			"note": "main(): the shell. The program is C: project/core + project/app.",
+			"outs": {},
+			"pos": [
+				0.0,
+				0.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "start"
+		},
+		{
+			"args": {
+				"fps": {
+					"type": "int",
+					"value": "60"
+				},
+				"height": {
+					"type": "int",
+					"value": "540"
+				},
+				"title": {
+					"type": "string",
+					"value": "C-Vert"
+				},
+				"width": {
+					"type": "int",
+					"value": "960"
+				}
+			},
+			"fields": {
+				"esc_closes": false
+			},
+			"id": 2,
+			"links": {
+				"next": [
+					3
+				]
+			},
+			"outs": {},
+			"pos": [
+				224.0,
+				0.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "window"
+		},
+		{
+			"args": {},
+			"fields": {
+				"args": [],
+				"header": "mf_app.h",
+				"name": "mf_app_init",
+				"returns": "int"
+			},
+			"id": 3,
+			"links": {
+				"next": [
+					4
+				]
+			},
+			"note": "Loads --obj FILE (else a cube). Gives back 1 when it can't.",
+			"outs": {
+				"result": {
+					"use": false,
+					"var": "failed"
+				}
+			},
+			"pos": [
+				432.0,
+				0.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "call_c"
+		},
+		{
+			"args": {
+				"a": {
+					"var": "failed"
+				},
+				"b": {
+					"type": "int",
+					"value": "0"
+				}
+			},
+			"fields": {
+				"operator": "!="
+			},
+			"id": 4,
+			"links": {
+				"false": [],
+				"next": [
+					7
+				],
+				"true": [
+					5
+				]
+			},
+			"outs": {},
+			"pos": [
+				656.0,
+				0.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "if"
+		},
+		{
+			"args": {
+				"value": {
+					"type": "string",
+					"value": "C-Vert: couldn't start (the reason is printed above)"
+				}
+			},
+			"fields": {
+				"newline": true
+			},
+			"id": 5,
+			"links": {
+				"next": [
+					6
+				]
+			},
+			"outs": {},
+			"pos": [
+				864.0,
+				-32.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "print"
+		},
+		{
+			"args": {
+				"code": {
+					"type": "int",
+					"value": "1"
+				}
+			},
+			"fields": {},
+			"id": 6,
+			"links": {},
+			"outs": {},
+			"pos": [
+				1344.0,
+				-32.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "quit"
+		},
+		{
+			"args": {},
+			"fields": {},
+			"id": 7,
+			"links": {
+				"done": [
+					13
+				],
+				"frame": [
+					8
+				]
+			},
+			"outs": {},
+			"pos": [
+				864.0,
+				160.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "game_loop"
+		},
+		{
+			"args": {
+				"color": {
+					"type": "string",
+					"value": "#23252e"
+				}
+			},
+			"fields": {},
+			"id": 8,
+			"links": {
+				"next": [
+					9
+				]
+			},
+			"outs": {},
+			"pos": [
+				1088.0,
+				160.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "clear"
+		},
+		{
+			"args": {},
+			"fields": {
+				"args": [],
+				"header": "mf_app.h",
+				"name": "mf_app_update",
+				"returns": "void"
+			},
+			"id": 9,
+			"links": {
+				"next": [
+					10
+				]
+			},
+			"note": "Input, camera, picking, edits (and the --demo script).",
+			"outs": {},
+			"pos": [
+				1296.0,
+				160.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "call_c"
+		},
+		{
+			"args": {},
+			"fields": {},
+			"id": 10,
+			"links": {
+				"draw": [
+					11
+				],
+				"next": [
+					12
+				]
+			},
+			"outs": {},
+			"pos": [
+				1520.0,
+				160.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "draw3d"
+		},
+		{
+			"args": {},
+			"fields": {
+				"args": [],
+				"header": "mf_app.h",
+				"name": "mf_app_draw3d",
+				"returns": "void"
+			},
+			"id": 11,
+			"links": {
+				"next": []
+			},
+			"note": "Grid, solid mesh, edges, selection outline.",
+			"outs": {},
+			"pos": [
+				1728.0,
+				160.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "call_c"
+		},
+		{
+			"args": {},
+			"fields": {
+				"args": [],
+				"header": "mf_app.h",
+				"name": "mf_app_draw_hud",
+				"returns": "void"
+			},
+			"id": 12,
+			"links": {
+				"next": []
+			},
+			"note": "Stats line and key help (2D, on top).",
+			"outs": {},
+			"pos": [
+				1728.0,
+				336.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "call_c"
+		},
+		{
+			"args": {},
+			"fields": {
+				"args": [],
+				"header": "mf_app.h",
+				"name": "mf_app_shutdown",
+				"returns": "void"
+			},
+			"id": 13,
+			"links": {
+				"next": []
+			},
+			"note": "Game loop's Done: frees the mesh and undo history.",
+			"outs": {},
+			"pos": [
+				1088.0,
+				320.0
+			],
+			"size": [
+				0.0,
+				0.0
+			],
+			"type": "call_c"
+		}
+	],
+	"target": "native",
+	"version": 4,
+	"view": {
+		"scroll": [
+			-191.049346923828,
+			-166.712020874023
+		],
+		"zoom": 0.289664268493652
+	}
+}

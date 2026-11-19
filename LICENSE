@@ -1,0 +1,65 @@
+C-Vert License (source-available; not an open-source license)
+
+Copyright (c) 2026 xdmonsterman17. All rights reserved.
+
+In plain words: you may read the source code. You may run C-Vert and use it for anything,
+including commercial work. Everything you make with it (meshes, OBJ files, shaders) is yours to use,
+ship and sell. You may not copy, modify or redistribute the source code or the program itself.
+The legal text follows; where it differs from this summary, the text decides.
+
+1. WHAT THIS COVERS
+
+"C-Vert" means the files in this repository (the C source in core/ and app/, the assets, the
+documentation, the tools and the tests), and the program built from them. "The Program" means a
+built, ready-to-run copy of C-Vert released by the author. It does NOT include the Third-Party Components of section 6, which keep their own licenses.
+
+2. THE SOURCE CODE
+
+The source code of C-Vert is made available to read. Except as section 4 allows for Output, you
+may not copy, modify, adapt, translate, sublicense, sell, publish or distribute the source code or
+any part of it, you may not build another program, editor, code generator or service from it, and
+you may not use it to train a model or to build a competing product. Cloning or forking the
+repository on GitHub, and viewing it there, is allowed as far as GitHub's Terms of Service give
+that right to everyone; that is the only copying this license permits.
+
+3. THE PROGRAM
+
+You may download the Program from the author and run it, free of charge, for any purpose, personal or
+commercial. You may not redistribute, resell, sublicense, modify or reverse engineer the Program
+(except where the law gives you that right regardless of this license), and you may not offer it as
+a hosted service. To let someone else have the Program, point them to where the author publishes it.
+
+4. WHAT YOU MAKE WITH C-VERT ("OUTPUT")
+
+"Output" means everything the Program creates or helps you create: your meshes and scenes, the OBJ
+and .cbshader files it saves, and images it renders or screenshots it takes.
+
+The author owns no part of your Output. The author grants you a worldwide, perpetual, irrevocable,
+royalty-free license to use, copy, modify, publish, distribute, sublicense and sell Output for any
+purpose, commercial or not, under any license you choose, with no attribution required (credit is
+appreciated, not required). The sample files in assets/ (house.obj, checker.cbshader) are given the
+same way.
+
+5. NO WARRANTY, NO LIABILITY
+
+C-VERT AND THE PROGRAM ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NON-INFRINGEMENT. THE AUTHOR IS NOT LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THEIR
+USE, INCLUDING DATA LOSS OR LOSS OF MESHES OR SHADERS.
+
+6. THIRD-PARTY COMPONENTS
+
+Some files are not the author's and are under their own licenses, which this license does not
+change: the UI font in assets/ui_font.ttf (Liberation Sans, SIL Open Font License 1.1), and what a
+built Program contains from C-Bricks' runtime (raylib, zlib license, and the libraries inside it).
+NOTICE.md lists them.
+
+7. ENDING
+
+If you break section 2 or 3, the permissions of those sections end for you. The grant in section 4 for
+Output you already made stays, because it is given for Output, not for the Program.
+
+8. GENERAL
+
+If a part of this license is unenforceable, the rest stays. This license is not legal advice and the
+author is not offering one.

@@ -1,0 +1,13 @@
+[project]
+
+name="C-Vert"
+version="0.1"
+
+[run]
+
+args=""
+trace=true
+
+[build]
+
+target="native"

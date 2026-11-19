@@ -1,0 +1,14 @@
+# C-Bricks output and test artefacts
+.build/
+tests/reports/
+*.o
+out.obj
+out.obj.bak
+
+# personal Claude working files (kept on disk, not published)
+CLAUDE.md
+setup-claude.sh
+PROGRESS.md
+DECISIONS.md
+EDITOR-NOTES.md
+CBRICKS-UPDATE-NOTE.md
