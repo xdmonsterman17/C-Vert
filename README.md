@@ -66,8 +66,7 @@ Flags: `--obj FILE` `--save FILE` `--demo [--shot NAME.png]` (a scripted run, us
 F11 toggles borderless fullscreen (the window manager ignores the maximize request); `--no-maximize` (the window starts maximized, except with `--demo` / `--quit-after`; windowed is slow under Xwayland on the Pi) `--quit-after SECONDS`; C-Bricks' own: `--help`, `--trace`, `--debug FILE`, `--time`, `-v`.
 
 ## Shader workspace (F4)
-`F4` (or `--shader FILE`) switches to a workspace for C-Bricks shaders: a live preview on the left (a sphere on a floor; `M` shows your
-model instead) and the shader's node graph on the right (drag to pan, wheel to zoom, `F` to fit). The preview reloads the file every
+`F4`, the **Shader** tab at the top left, or `--shader FILE` switches to a workspace for C-Bricks shaders: a live preview on top (a sphere on a floor; `M` or the **Preview** button shows your model instead; **Import model** takes an OBJ path, Enter loads it into the scene) and below it the node graph (a palette of nodes on its left: click or drag a node to add it; drag the canvas to pan, wheel to zoom, `F` to fit). The **Modeling** tab goes back. The preview reloads the file every
 time it changes on disk, so a shader saved by C-Bricks' editor shows up within a quarter of a second. On the canvas, drag a node's header to move it, click an unwired input's box to type its numbers (commas or spaces; Enter confirms, Esc
 cancels). Every finished edit is saved to the file at once, so the preview follows. **Right-click** opens the add-node palette (type to search, Enter adds the first match); **X** / Delete removes the selected node; drag from an output port
 to an input port to wire (a new wire replaces the input's old one; loops are refused); drag a wired input's port to pick its wire up, and drop it on empty

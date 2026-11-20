@@ -124,7 +124,9 @@ static cb_mesh *make_floor(void) {
 }
 
 int mf_shader_active(void) { return on; }
-int mf_shader_split(void) { return (int)(cb_screen_width() * 0.40); }
+int mf_shader_split(void) { return (int)(cb_screen_height() * 0.55); }
+int mf_shader_model(void) { return use_model; }
+void mf_shader_set_model(int m) { use_model = m != 0; }
 const char *mf_shader_status(void) { return status; }
 
 static void init_once(void) {
@@ -172,7 +174,7 @@ void mf_shader_update(void) {
     spin += dt * 25.0;
 }
 
-float mf_shader_shift(void) { return on ? 1.0f - (float)mf_shader_split() / (float)cb_screen_width() : 0.0f; }
+float mf_shader_shift(void) { return on ? 1.0f - (float)mf_shader_split() / (float)cb_screen_height() : 0.0f; }
 
 void mf_shader_draw3d(float cx, float cy, float cz, float size, void *model, int model_tris) {
     if (!on) return;
@@ -188,9 +190,9 @@ void mf_shader_draw3d(float cx, float cy, float cz, float size, void *model, int
 void mf_shader_draw_hud(void) {
     int split = mf_shader_split();
     if (!on) return;
-    mf_shed_frame(split, 0, cb_screen_width() - split, cb_screen_height());
+    mf_shed_frame(0, split, cb_screen_width(), cb_screen_height() - split);
     mf_shed_chip(status, 10, 34, 14, 1);
-    mf_shed_chip(use_model ? "drag: turn   M: sphere   F4: back" : "drag: turn   M: model   F4: back", 10, cb_screen_height() - 34, 14, 0);
+    mf_shed_chip(use_model ? "drag: turn   M: sphere   F4: back" : "drag: turn   M: model   F4: back", 10, split - 34, 14, 0);
 }
 
 void mf_shader_shutdown(void) {

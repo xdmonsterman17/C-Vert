@@ -135,6 +135,7 @@ static struct {
     unsigned char *front; int fcap;     /* drawing scratch: per face, looks at the eye */
     int ord[MAX_OBJ], depth[MAX_OBJ];   /* the hierarchy panel's rows: object index and tree depth */
     int renaming, rn_i, rn_fresh; char rn[48];    /* rename (F2 / double click) */
+    int imp; char imp_buf[240];                   /* the Shader workspace's "Import model" path box (typed, Enter loads) */
     int rdrag, rdx, rdy;        /* a row of the hierarchy is being dragged (object + 1), where it went down */
     double click_t; int click_row;
     mf_vec3 *xorig;             /* positions when it started */
@@ -351,11 +352,10 @@ static void frame_mesh(int selonly) {
 static void place_camera(void) {
     float cp = cosf(A.pitch);
     A.eye = mf_add(A.target, mf_v3(A.dist * cp * sinf(A.yaw), A.dist * sinf(A.pitch), A.dist * cp * cosf(A.yaw)));
-    if (mf_shader_active()) {   /* the Shader workspace: the canvas covers the right side, so slide the view to put the target in the left strip */
-        float aspect = (float)cb_screen_width() / (float)cb_screen_height();
-        float shift = mf_shader_shift() * A.dist * tanf(A.fov * 0.5f * PI_F / 180.0f) * aspect;
-        float rx = cosf(A.yaw) * shift, rz = -sinf(A.yaw) * shift;
-        cb_camera(cb_v3(A.eye.x + rx, A.eye.y, A.eye.z + rz), cb_v3(A.target.x + rx, A.target.y, A.target.z + rz), A.fov, false);
+    if (mf_shader_active()) {   /* the Shader workspace: the graph editor covers the bottom, so slide the view to put the target in the top strip */
+        float shift = mf_shader_shift() * A.dist * tanf(A.fov * 0.5f * PI_F / 180.0f);   /* the camera slides down its own up vector: the target rises into the top strip */
+        float ux = -sinf(A.pitch) * sinf(A.yaw), uy = cosf(A.pitch), uz = -sinf(A.pitch) * cosf(A.yaw);
+        cb_camera(cb_v3(A.eye.x - ux * shift, A.eye.y - uy * shift, A.eye.z - uz * shift), cb_v3(A.target.x - ux * shift, A.target.y - uy * shift, A.target.z - uz * shift), A.fov, false);
         return;
     }
     cb_camera(cb_v3(A.eye.x, A.eye.y, A.eye.z), cb_v3(A.target.x, A.target.y, A.target.z), A.fov, false);
@@ -539,6 +539,17 @@ static int xray_btn_at(int x, int y) { return x >= vbar_x() && x < vbar_x() + VB
 #define WS_H 24
 #define WS_W 84
 static int ws_tab_at(int x, int y) { return y >= WS_Y && y < WS_Y + WS_H && x >= WS_X && x < WS_X + 2 * WS_W ? (x - WS_X) / WS_W : -1; }
+/* Shader workspace buttons, right of the tabs: Import model (an OBJ path is typed), and the preview's Sphere / Model switch. */
+#define WB_X (WS_X + 2 * WS_W + 8)
+#define WB_IMP_W 112
+#define WB_PRE_W 124
+static int ws_btn_at(int x, int y) {   /* 0 import, 1 preview switch, -1 none */
+    if (y < WS_Y || y >= WS_Y + WS_H) return -1;
+    if (x >= WB_X && x < WB_X + WB_IMP_W) return 0;
+    if (x >= WB_X + WB_IMP_W + 4 && x < WB_X + WB_IMP_W + 4 + WB_PRE_W) return 1;
+    return -1;
+}
+static int ws_ui_at(int x, int y) { return ws_tab_at(x, y) >= 0 || (mf_shader_active() && ws_btn_at(x, y) >= 0); }
 static int in_toolbar(int x, int y) { return (x >= TB_X && x < TB_X + TB_W && y >= TB_Y && y < TB_Y + TOOL_N * (TB_H + TB_GAP)) || xray_btn_at(x, y) || ws_tab_at(x, y) >= 0; }
 
 /* Text through the smooth TrueType font when it loaded (mf_font.c), else C-Bricks' built-in pixel font. */
@@ -943,6 +954,57 @@ static void rename_end(int ok) {
         status("renamed to \"%s\"", tmp);
     } else status("rename %s", ok ? "unchanged" : "cancelled");
 }
+/* Import model (Shader workspace): an OBJ becomes a new object in the scene and the preview switches to the model. */
+static void import_obj(const char *path) {
+    mf_mesh *m;
+    char err[200];
+    int i, j;
+    err[0] = 0;
+    if (A.mode == MODE_MESH) { status("leave Mesh mode (Tab) before importing"); return; }
+    if (A.nobj >= MAX_OBJ) { status("the scene is full (%d objects)", MAX_OBJ); return; }
+    m = mf_new();
+    if (!m) { status("out of memory"); return; }
+    if (mf_obj_read(m, path, err, sizeof err) != 0 || m->nf == 0) {
+        status("import failed: %s", m->nf == 0 && err[0] == 0 ? "no faces" : err);
+        printf("[meshforge] import %s failed\n", path);
+        mf_free(m);
+        return;
+    }
+    undo_push();
+    i = A.nobj;
+    memset(&A.o[i], 0, sizeof A.o[i]);
+    A.o[i].t = mf_trs_identity();
+    A.o[i].parent = -1;
+    A.o[i].mesh = m;
+    {   /* the name: the file's, without folders and extension */
+        const char *b = strrchr(path, '/');
+        char nm[48], *dot;
+        snprintf(nm, sizeof nm, "%s", b ? b + 1 : path);
+        dot = strrchr(nm, '.');
+        if (dot && dot != nm) *dot = 0;
+        unique_name(nm, A.o[i].name, sizeof A.o[i].name);
+    }
+    A.nobj++;
+    for (j = 0; j < A.nobj; j++) A.o[j].sel = j == i;
+    set_cur(i);
+    A.dirty = 1;
+    frame_mesh(0);
+    mf_shader_set_model(1);
+    status("imported %s as \"%s\"", path, A.o[i].name);
+    printf("[meshforge] imported %s as %s\n", path, A.o[i].name);
+}
+static void import_update(void) {
+    size_t n = strlen(A.imp_buf);
+    int i;
+    if (cb_key_pressed(CB_KEY_ESCAPE)) { A.imp = 0; return; }
+    if (cb_key_pressed(CB_KEY_ENTER)) { A.imp = 0; if (n) import_obj(A.imp_buf); return; }
+    for (i = 0; i < A.ntyped; i++) {
+        int c = (unsigned char)A.typed[i];
+        if (c >= 32 && c < 127 && n + 1 < sizeof A.imp_buf) { A.imp_buf[n++] = (char)c; A.imp_buf[n] = 0; }
+    }
+    if (cb_key_pressed(CB_KEY_BACKSPACE) && n > 0) A.imp_buf[n - 1] = 0;
+}
+
 static void rename_update(void) {
     size_t n = strlen(A.rn);
     int i;
@@ -2219,11 +2281,13 @@ void mf_app_update(void) {
     if (!A.renaming && !A.xf && cb_mouse_pressed(CB_MOUSE_LEFT)) {   /* the workspace tabs */
         int t = ws_tab_at(cb_mouse_x(), cb_mouse_y());
         if (t == 1 && !mf_shader_active()) { mf_shader_open(NULL); printf("[meshforge] workspace Shader\n"); }
+        else if (mf_shader_active() && ws_btn_at(cb_mouse_x(), cb_mouse_y()) == 0) { A.imp = !A.imp; if (A.imp && !A.imp_buf[0]) snprintf(A.imp_buf, sizeof A.imp_buf, "assets/"); }
+        else if (mf_shader_active() && ws_btn_at(cb_mouse_x(), cb_mouse_y()) == 1) mf_shader_set_model(!mf_shader_model());
         else if (t == 0 && mf_shader_active()) { mf_shader_close(); printf("[meshforge] workspace Modeling\n"); }
     }
     if (!A.renaming && !A.xf && cb_key_pressed(CB_KEY_F4)) { if (mf_shader_active()) mf_shader_close(); else mf_shader_open(NULL); }   /* the Shader workspace */
     sh = mf_shader_active();
-    strip = !sh || mx < mf_shader_split();   /* in the Shader workspace the camera only answers over the left strip */
+    strip = !sh || (my < mf_shader_split() && !ws_ui_at(mx, my));   /* in the Shader workspace the camera only answers over the top strip */
     rmb = cb_mouse_down(CB_MOUSE_RIGHT) && A.rmb_ok && !A.xf && !A.renaming && strip;
 
     if (A.was_rmb && !rmb) printf("[meshforge] flew: target %.2f %.2f %.2f\n", (double)A.target.x, (double)A.target.y, (double)A.target.z);
@@ -2271,6 +2335,7 @@ void mf_app_update(void) {
     A.eat = 0;
     if (A.renaming) rename_update();
     else if (A.xf) xf_update();
+    else if (sh && A.imp) { A.eat = 1; import_update(); }
     else if (sh) { A.eat = 1; mf_shader_typed(A.typed, A.ntyped); mf_shader_update(); if (ctrl_down() && cb_key_pressed(CB_KEY_Q)) quit_request(); }
     else if (!rmb) { A.eat = ui_update(); commands(shift); }
     refresh_mask();
@@ -2421,6 +2486,26 @@ static void draw_ws_tabs(void) {
         txt(name[i], x + (WS_W - 3 - tw_(name[i], 14)) / 2, WS_Y + 5, 14, on ? C_ACC : C_INK);
     }
 }
+static void draw_ws_buttons(void) {   /* only in the Shader workspace */
+    int mx = cb_mouse_x(), my = cb_mouse_y(), hot = ws_btn_at(mx, my), i;
+    for (i = 0; i < 2; i++) {
+        const char *lbl = i == 0 ? "Import model" : (mf_shader_model() ? "Preview: model" : "Preview: sphere");
+        int x = WB_X + (i ? WB_IMP_W + 4 : 0), w = i ? WB_PRE_W : WB_IMP_W, on = i == 0 && A.imp;
+        rr(x, WS_Y, w, WS_H, 4, on ? C_ACC : C_FRAME);
+        rr(x + 1, WS_Y + 1, w - 2, WS_H - 2, 3, on ? C_ACCBG : (hot == i ? C_FIELDH : C_PANEL));
+        txt(lbl, x + (w - tw_(lbl, 14)) / 2, WS_Y + 5, 14, on ? C_ACC : C_INK);
+    }
+    if (A.imp) {   /* the path box, across the foot of the preview */
+        int bw = cb_screen_width() - 20, by = mf_shader_split() - 66;
+        char line[280];
+        rr(10, by, bw, 56, 5, C_ACC);
+        rr(11, by + 1, bw - 2, 54, 4, C_PANEL);
+        txt("Import an OBJ into the scene (it is previewed): type its path, Enter loads, Esc cancels", 20, by + 6, 13, C_DIM);
+        snprintf(line, sizeof line, "%s_", A.imp_buf);
+        rr(18, by + 26, bw - 16, 24, 3, C_FIELD);
+        txt(line, 24, by + 31, 14, C_INK);
+    }
+}
 static void draw_tabs(void) {
     int px = panel_x(), py = tabs_y(), t, mx = cb_mouse_x(), my = cb_mouse_y(), cw = PANEL_W / TAB_N;
     cb_rgba ink = C_INK, dim = C_DIM;
@@ -2538,7 +2623,7 @@ void mf_app_draw_hud(void) {
     if (!A.font_tried) { A.font_tried = 1; mf_font_load("assets/ui_font.ttf", 16); }
     m = A.mesh;
     w = cb_screen_width(); h = cb_screen_height();
-    if (mf_shader_active()) { mf_shader_draw_hud(); draw_ws_tabs(); take_shot(); pr_end(PR_HUD); return; }
+    if (mf_shader_active()) { mf_shader_draw_hud(); draw_ws_tabs(); draw_ws_buttons(); take_shot(); pr_end(PR_HUD); return; }
     draw_xray_overlay();
     if (A.mode == MODE_MESH && m && A.selmode == MF_SEL_VERT && A.mask_cap >= m->nv) {   /* vertex dots, over everything */
         /* One projection per vertex. When the visible dots are packed closer than 4 pixels they only paint the mesh grey (and are 30k draw

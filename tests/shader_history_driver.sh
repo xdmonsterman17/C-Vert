@@ -21,7 +21,7 @@ set -- $(pos "node 5 head"); MX=$1; MY=$2
 click $BX $BY
 xdotool keydown Shift_L; sleep 0.2; click $MX $MY; xdotool keyup Shift_L; sleep 0.4
 ctrl c
-xdotool mousemove --window "$WID" $((BX - 100)) $((BY - 100)); sleep 0.4
+xdotool mousemove --window "$WID" $((BX + 40)) $((BY + 110)); sleep 0.4
 ctrl v          # nodes 6 and 7, with the wire between them
 hold x; sleep 0.5        # both pasted nodes are selected: gone
 ctrl z; sleep 0.3        # back

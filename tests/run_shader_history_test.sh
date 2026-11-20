@@ -17,7 +17,7 @@ n = {x["id"]: x for x in g["nodes"]}
 assert sorted(n) == [1, 2, 3, 4, 5, 6, 7], ("nodes", sorted(n))
 assert n[6]["type"] == "base" and n[7]["type"] == "mix" and n[7]["t"] == "vec3", (n[6], n[7])
 assert n[7]["values"]["b"] == [1.0, 0.8, 0.1], n[7]
-assert n[6]["pos"][1] < n[4]["pos"][1], ("pasted at the mouse, above", n[6]["pos"])
+assert n[6]["pos"][1] > n[4]["pos"][1], ("pasted at the mouse, below", n[6]["pos"])
 w = {(x["from"], x["out"], x["to"], x["in"]) for x in g["wires"]}
 assert (6, "color", 7, "a") in w and len(w) == 5, ("wires", w)
 u = json.load(open(sys.argv[2]))

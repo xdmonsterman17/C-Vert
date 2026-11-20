@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # The workspace tabs (Modeling / Shader) and the node palette sidebar, with the real mouse: switch to Modeling and back, click a
-# palette entry (adds a node at the canvas middle), drag another onto the canvas (adds at the drop point). File checked.   tests/run_shader_palette_test.sh
+# palette entry (adds a node at the canvas middle), drag another onto the canvas (adds at the drop point), import an OBJ. File checked.   tests/run_shader_palette_test.sh
 set -e
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 export HERE
@@ -22,4 +22,5 @@ for t in base: extra.remove(t)
 assert len(extra) == 2, extra
 PY
 grep -q 'workspace Modeling' "$L" && grep -q 'workspace Shader' "$L" || fail "the tabs did not switch both ways"
+grep -q "imported assets/house.obj as house" "$L" || fail "the model was not imported"
 echo "shader palette test: ok"

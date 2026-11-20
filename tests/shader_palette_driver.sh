@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Runs INSIDE a virtual X display (tests/run_shader_palette_test.sh starts it). Window 960x540: the workspace tabs sit at the top left
-# (Modeling x 8..92, Shader x 92..176, y 3..27); the palette sidebar starts at 40% of the width (384) and its first list row is y 80.
+# (Modeling x 8..92, Shader x 92..176, y 3..27, then Import model x 184..296); the graph editor is the bottom 45% (from y 297) with the
+# palette sidebar at its left (x 0..200): its first list row is at y 377.
 set -e
 LOG="$HERE/tests/reports/shader_palette.log"; F="$HERE/tests/reports/shader_palette.cbshader"
 cp tests/data/checker.cbshader "$F"
@@ -15,8 +16,11 @@ click() { xdotool mousemove --window "$WID" "$1" "$2"; sleep 0.3; xdotool moused
 click 50 15 1            # Modeling tab: the workspace closes
 click 130 15 1           # Shader tab: it opens again on the same file
 sleep 1
-click 530 92 1           # the first node of the list (Input > Base color): added at the canvas middle
+click 240 15 1           # Import model: the path box opens with assets/ in it
+xdotool type --delay 80 house.obj; sleep 0.4
+xdotool keydown Return; sleep 0.2; xdotool keyup Return; sleep 1
+click 130 389 1          # the first node of the list (Input > Base color): added at the canvas middle
 # drag the second one onto the canvas
-xdotool mousemove --window "$WID" 530 116; sleep 0.3; xdotool mousedown 1; sleep 0.3
-xdotool mousemove --window "$WID" 600 200; sleep 0.2; xdotool mousemove --window "$WID" 760 420; sleep 0.3; xdotool mouseup 1; sleep 0.8
+xdotool mousemove --window "$WID" 130 413; sleep 0.3; xdotool mousedown 1; sleep 0.3
+xdotool mousemove --window "$WID" 400 440; sleep 0.2; xdotool mousemove --window "$WID" 600 470; sleep 0.3; xdotool mouseup 1; sleep 0.8
 sleep 1
