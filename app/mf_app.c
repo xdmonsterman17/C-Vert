@@ -533,7 +533,13 @@ static int tool_at(int x, int y) {
 #define VB_N 1
 static int vbar_x(void) { return (cb_screen_width() - VB_N * VB_BW) / 2; }
 static int xray_btn_at(int x, int y) { return x >= vbar_x() && x < vbar_x() + VB_BW && y >= VB_Y && y < VB_Y + VB_H; }
-static int in_toolbar(int x, int y) { return (x >= TB_X && x < TB_X + TB_W && y >= TB_Y && y < TB_Y + TOOL_N * (TB_H + TB_GAP)) || xray_btn_at(x, y); }
+/* The workspace tabs (top left): Modeling and Shader, so the shader editor is one click away (F4 still toggles). */
+#define WS_X 8
+#define WS_Y 3
+#define WS_H 24
+#define WS_W 84
+static int ws_tab_at(int x, int y) { return y >= WS_Y && y < WS_Y + WS_H && x >= WS_X && x < WS_X + 2 * WS_W ? (x - WS_X) / WS_W : -1; }
+static int in_toolbar(int x, int y) { return (x >= TB_X && x < TB_X + TB_W && y >= TB_Y && y < TB_Y + TOOL_N * (TB_H + TB_GAP)) || xray_btn_at(x, y) || ws_tab_at(x, y) >= 0; }
 
 /* Text through the smooth TrueType font when it loaded (mf_font.c), else C-Bricks' built-in pixel font. */
 static void txt(const char *s, int x, int y, int size, cb_rgba c) {
@@ -2210,6 +2216,11 @@ void mf_app_update(void) {
     shift = shift_down();
     mx = cb_mouse_x(); my = cb_mouse_y();
     if (!cb_mouse_down(CB_MOUSE_RIGHT)) A.rmb_ok = 1;
+    if (!A.renaming && !A.xf && cb_mouse_pressed(CB_MOUSE_LEFT)) {   /* the workspace tabs */
+        int t = ws_tab_at(cb_mouse_x(), cb_mouse_y());
+        if (t == 1 && !mf_shader_active()) { mf_shader_open(NULL); printf("[meshforge] workspace Shader\n"); }
+        else if (t == 0 && mf_shader_active()) { mf_shader_close(); printf("[meshforge] workspace Modeling\n"); }
+    }
     if (!A.renaming && !A.xf && cb_key_pressed(CB_KEY_F4)) { if (mf_shader_active()) mf_shader_close(); else mf_shader_open(NULL); }   /* the Shader workspace */
     sh = mf_shader_active();
     strip = !sh || mx < mf_shader_split();   /* in the Shader workspace the camera only answers over the left strip */
@@ -2400,6 +2411,16 @@ static void sect_head(int px, int y, const char *title) {   /* a Blender-style p
     ico_arrow(px + 16, y + 7, 1, C_DIM);
     txt(title, px + 32, y + 4, 14, C_INK);
 }
+static void draw_ws_tabs(void) {
+    static const char *name[2] = { "Modeling", "Shader" };
+    int i, mx = cb_mouse_x(), my = cb_mouse_y(), cur = mf_shader_active() ? 1 : 0;
+    for (i = 0; i < 2; i++) {
+        int x = WS_X + i * WS_W, on = i == cur, hot = ws_tab_at(mx, my) == i;
+        rr(x, WS_Y, WS_W - 3, WS_H, 4, on ? C_ACC : C_FRAME);
+        rr(x + 1, WS_Y + 1, WS_W - 5, WS_H - 2, 3, on ? C_ACCBG : (hot ? C_FIELDH : C_PANEL));
+        txt(name[i], x + (WS_W - 3 - tw_(name[i], 14)) / 2, WS_Y + 5, 14, on ? C_ACC : C_INK);
+    }
+}
 static void draw_tabs(void) {
     int px = panel_x(), py = tabs_y(), t, mx = cb_mouse_x(), my = cb_mouse_y(), cw = PANEL_W / TAB_N;
     cb_rgba ink = C_INK, dim = C_DIM;
@@ -2517,7 +2538,7 @@ void mf_app_draw_hud(void) {
     if (!A.font_tried) { A.font_tried = 1; mf_font_load("assets/ui_font.ttf", 16); }
     m = A.mesh;
     w = cb_screen_width(); h = cb_screen_height();
-    if (mf_shader_active()) { mf_shader_draw_hud(); take_shot(); pr_end(PR_HUD); return; }
+    if (mf_shader_active()) { mf_shader_draw_hud(); draw_ws_tabs(); take_shot(); pr_end(PR_HUD); return; }
     draw_xray_overlay();
     if (A.mode == MODE_MESH && m && A.selmode == MF_SEL_VERT && A.mask_cap >= m->nv) {   /* vertex dots, over everything */
         /* One projection per vertex. When the visible dots are packed closer than 4 pixels they only paint the mesh grey (and are 30k draw
@@ -2639,6 +2660,7 @@ void mf_app_draw_hud(void) {
         txt("X-ray", bx + (VB_BW - tw_("X-ray", 14)) / 2, VB_Y + (VB_H - 14) / 2 + 1, 14, A.xray ? C_ACC : ink);
     }
     draw_tabs();
+    draw_ws_tabs();
     draw_gizmo();
     if (A.lp && A.boxing) {   /* the selection box being dragged */
         int x0 = A.px0 < cb_mouse_x() ? A.px0 : cb_mouse_x(), y0 = A.py0 < cb_mouse_y() ? A.py0 : cb_mouse_y();

@@ -44,6 +44,7 @@ static int have_graph = 0, fitted = 0, fit_frames = 0;   /* fit_frames: keeps fi
 static double pan_x = 0, pan_y = 0, zoom = 1;   /* screen = (world - pan) * zoom + panel origin */
 static int px = 0, py = 0, pw = 100, ph = 100;
 
+static cb_rgba cb_rgb(int r, int g, int b);
 static cb_rgba cb_rgb(int r, int g, int b) { cb_rgba c; c.r = (unsigned char)r; c.g = (unsigned char)g; c.b = (unsigned char)b; c.a = 255; return c; }
 
 static const def *find_def(const char *key) {
@@ -53,7 +54,7 @@ static const def *find_def(const char *key) {
 }
 
 /* The C-Vert / C-Bricks look (same values as mf_app.c's panels): near-black panels, 1 px frame, light-blue accent, rounded corners. */
-#define T_BG    ((cb_rgba){22, 24, 29, 255})
+#define T_BG    ((cb_rgba){29, 34, 41, 255})   /* the Bricks canvas background (brick_theme.gd BACKGROUND) */
 #define T_DOT   ((cb_rgba){44, 48, 58, 255})
 #define T_PANEL ((cb_rgba){27, 29, 35, 255})
 #define T_FRAME ((cb_rgba){58, 62, 74, 255})
@@ -64,7 +65,24 @@ static const def *find_def(const char *key) {
 #define T_ACCBG ((cb_rgba){36, 64, 92, 255})
 #define T_INK   ((cb_rgba){226, 229, 236, 255})
 #define T_DIM   ((cb_rgba){138, 145, 160, 255})
+#define T_BRICKTXT ((cb_rgba){220, 222, 225, 255})
 #define T_WARN  ((cb_rgba){255, 166, 77, 255})
+static cb_rgba lerpc(cb_rgba a, cb_rgba b, double t) {
+    cb_rgba c;
+    c.r = (unsigned char)(a.r + (b.r - a.r) * t); c.g = (unsigned char)(a.g + (b.g - a.g) * t); c.b = (unsigned char)(a.b + (b.b - a.b) * t); c.a = 255;
+    return c;
+}
+/* The category colours of C-Bricks' brick_theme.gd; the shader groups borrow the ones that read best. */
+static cb_rgba group_color(const char *g) {
+    if (strcmp(g, "Color") == 0) return cb_rgb(199, 255, 153);      /* graphics */
+    if (strcmp(g, "Constant") == 0) return cb_rgb(66, 255, 194);    /* data */
+    if (strcmp(g, "Input") == 0) return cb_rgb(255, 194, 115);      /* user input */
+    if (strcmp(g, "Math") == 0) return cb_rgb(161, 255, 224);       /* math */
+    if (strcmp(g, "Output") == 0) return cb_rgb(163, 163, 245);     /* input / output */
+    if (strcmp(g, "Pattern") == 0) return cb_rgb(255, 112, 133);    /* functions */
+    if (strcmp(g, "Vector") == 0) return cb_rgb(188, 224, 255);     /* variables */
+    return cb_rgb(204, 207, 210);
+}
 static void rrect(int x, int y, int w, int h, int r, cb_rgba c) {   /* a rounded rectangle */
     if (w <= 0 || h <= 0) return;
     if (r * 2 > h) r = h / 2;
@@ -474,7 +492,8 @@ void mf_shed_set_path(const char *p) {
     hist_reset();
 }
 const char *mf_shed_take_open(void) { static char out[560]; snprintf(out, sizeof out, "%s", open_request); open_request[0] = 0; return out; }
-int mf_shed_editing(void) { return edit_node >= 0 || pal_open; }
+static int sb_focus = 0;
+int mf_shed_editing(void) { return edit_node >= 0 || pal_open || sb_focus; }
 static char pending[32];
 static int npending = 0;
 void mf_shed_type(const char *chars, int n) { int i; for (i = 0; i < n && npending < (int)sizeof pending; i++) pending[npending++] = chars[i]; }
@@ -608,9 +627,8 @@ typedef struct { int def; const char *group; } pal_entry;   /* def < 0: a group 
 static pal_entry pal_e[MAX_DEFS * 2];
 static int pal_n = 0;
 
-static void pal_build(void) {
-    int i, j;
-    pal_n = 0;
+static void pal_fill(pal_entry *pal_e, int *pal_np, const char *pal_search) {
+    int i, j, pal_n = 0;
     for (i = 0; i < ndefs; i++) {
         int seen = 0;
         for (j = 0; j < i; j++) if (strcmp(defs[j].group, defs[i].group) == 0) { seen = 1; break; }
@@ -628,7 +646,9 @@ static void pal_build(void) {
             if (pal_n == head + 1) pal_n = head;   /* a heading with nothing under it */
         }
     }
+    *pal_np = pal_n;
 }
+static void pal_build(void) { pal_fill(pal_e, &pal_n, pal_search); }
 
 static void add_node(int di, double wx, double wy) {
     node *n;
@@ -737,17 +757,23 @@ static void draw_node(const node *n) {
     double x = sx(n->x), y = sy(n->y), w = NODE_W * zoom, h = node_h(n) * zoom;
     int i;
     if (x > px + pw || y > py + ph || x + w < px || y + h < py) return;
-    {
-        int rad = (int)(5 * zoom + 0.5), hh = (int)(HEAD_H * zoom);
-        framed((int)x, (int)y, (int)w, (int)h, rad, T_PANEL, n->sel ? T_ACC : T_FRAME);
-        rrect((int)x + 1, (int)y + 1, (int)w - 2, hh, rad > 1 ? rad - 1 : rad, n->d ? (n->sel ? T_ACCBG : T_HEAD) : (cb_rgba){92, 40, 40, 255});
-        cb_draw_rect((int)x + 1, (int)y + hh / 2, (int)w - 2, hh - hh / 2, n->d ? (n->sel ? T_ACCBG : T_HEAD) : (cb_rgba){92, 40, 40, 255});   /* square its lower edge */
-        cb_draw_rect((int)x + 1, (int)y + hh, (int)w - 2, 1, n->sel ? T_ACC : T_FRAME);
+    {   /* a brick: a tinted title bar with a coloured edge, a darker tinted body (brick_view.gd _style) */
+        int rad = (int)(6 * zoom + 0.5), hh = (int)(HEAD_H * zoom);
+        cb_rgba gc = n->d ? group_color(n->d->group) : cb_rgb(255, 77, 77);
+        cb_rgba edge = n->sel ? T_ACC : gc, body_edge = n->sel ? T_ACC : lerpc(gc, (cb_rgba){0, 0, 0, 255}, 0.2);
+        cb_rgba bar = lerpc(T_BG, gc, n->sel ? 0.45 : 0.32), body = lerpc(T_BG, gc, 0.1);
+        rrect((int)x, (int)y, (int)w, (int)h, rad, body_edge);
+        rrect((int)x + 2, (int)y + 2, (int)w - 4, (int)h - 4, rad > 2 ? rad - 2 : 1, body);
+        rrect((int)x, (int)y, (int)w, hh + rad, rad, edge);
+        rrect((int)x + 2, (int)y + 2, (int)w - 4, hh + rad, rad > 2 ? rad - 2 : 1, bar);
+        cb_draw_rect((int)x + 2, (int)y + hh, (int)w - 4, rad + 1, body);                 /* cut the bar's lower round corners off */
+        cb_draw_rect((int)x, (int)y + hh, 2, rad + 1, body_edge);
+        cb_draw_rect((int)x + (int)w - 2, (int)y + hh, 2, rad + 1, body_edge);
     }
-    text(n->d ? n->d->title : n->type, x + 8 * zoom, y + 5 * zoom, 15, T_INK);
+    text(n->d ? n->d->title : n->type, x + 8 * zoom, y + 5 * zoom, 15, T_BRICKTXT);
     if (n->d && is_gen(n->d)) {   /* click it to change the node's type */
         const char *tt = n->t[0] ? n->t : "float";
-        rrect((int)(x + w - 44 * zoom), (int)(y + 4 * zoom), (int)(38 * zoom), (int)((HEAD_H - 8) * zoom), 3, T_FIELD);
+        rrect((int)(x + w - 44 * zoom), (int)(y + 4 * zoom), (int)(38 * zoom), (int)((HEAD_H - 8) * zoom), 3, lerpc(T_BG, group_color(n->d->group), 0.18));
         text(tt, x + w - 40 * zoom, y + 6 * zoom, 12, type_color(tt));
     }
     if (!n->d) { text("unknown node type", x + 8 * zoom, y + (HEAD_H + 4) * zoom, 13, T_WARN); return; }
@@ -756,7 +782,7 @@ static void draw_node(const node *n) {
         port_pos(n, 0, i, &ax, &ay);
         cb_draw_circle((int)ax, (int)ay, 6 * zoom, T_PANEL);
         cb_draw_circle((int)ax, (int)ay, 4.5 * zoom, type_color(port_type(n, &n->d->in[i])));
-        text(n->d->in[i].name, ax + 10 * zoom, ay - 7 * zoom, 13, T_DIM);
+        text(n->d->in[i].name, ax + 10 * zoom, ay - 7 * zoom, 13, T_BRICKTXT);
         {
             double fv[4];
             if (!is_wired(n, n->d->in[i].name) && value_of(n, i, fv)) {
@@ -764,7 +790,7 @@ static void draw_node(const node *n) {
                 char vt[80];
                 int editing = edit_node >= 0 && &nodes[edit_node] == n && edit_in == i;
                 if (editing) snprintf(vt, sizeof vt, "%s_", edit_buf); else value_text(n, i, vt, sizeof vt);
-                if (editing) framed((int)fx, (int)fy, (int)fw, (int)fh, 3, T_BG, T_ACC); else rrect((int)fx, (int)fy, (int)fw, (int)fh, 3, T_FIELD);
+                if (editing) framed((int)fx, (int)fy, (int)fw, (int)fh, 3, T_BG, T_ACC); else rrect((int)fx, (int)fy, (int)fw, (int)fh, 3, lerpc(T_BG, group_color(n->d->group), 0.04));
                 text(vt, fx + 4 * zoom, fy + 2 * zoom, 13, n->vn[i] > 0 ? T_INK : T_DIM);
             }
         }
@@ -776,13 +802,136 @@ static void draw_node(const node *n) {
         cb_draw_circle((int)ax, (int)ay, 6 * zoom, T_PANEL);
         cb_draw_circle((int)ax, (int)ay, 4.5 * zoom, type_color(port_type(n, &n->d->out[i])));
         tw = ui_width(n->d->out[i].name, (int)(13 * zoom + 0.5));
-        text(n->d->out[i].name, ax - 10 * zoom - tw, ay - 7 * zoom, 13, T_DIM);
+        text(n->d->out[i].name, ax - 10 * zoom - tw, ay - 7 * zoom, 13, T_BRICKTXT);
+    }
+}
+
+/* ---- the brick palette (C-Bricks' left sidebar): a search box, the groups as coloured words, one pill per node. Click or drag one to add it. ---- */
+#define SB_W 200
+#define SB_CAT_W 62
+#define SB_ROW 24
+#define SB_TOP 56
+static pal_entry sb_e[MAX_DEFS * 2];
+static int sb_n = 0, sb_scroll = 0, sb_len = 0, sb_drag = -1, sb_drag_x = 0, sb_drag_y = 0;
+static char sb_search[32] = "";
+static int sb_x = 0;   /* the sidebar's left edge on screen (set every frame) */
+
+static int sb_content_h(void) { return sb_n * SB_ROW; }
+static void sb_clamp(void) {
+    int max = sb_content_h() - (ph - SB_TOP - 8);
+    if (max < 0) max = 0;
+    if (sb_scroll > max) sb_scroll = max;
+    if (sb_scroll < 0) sb_scroll = 0;
+}
+static int sb_item_at(int mx, int my) {
+    int i = (my - py - SB_TOP + sb_scroll) / SB_ROW;
+    if (mx < sb_x + SB_CAT_W + 4 || mx >= sb_x + SB_W - 4 || my < py + SB_TOP || my >= py + ph) return -1;
+    return i >= 0 && i < sb_n ? i : -1;
+}
+static int sb_cat_at(int mx, int my, const char **name) {   /* the group words, one per heading of the list */
+    int i, row = 0;
+    if (mx < sb_x + 4 || mx >= sb_x + SB_CAT_W || my < py + SB_TOP) return 0;
+    for (i = 0; i < sb_n; i++) {
+        if (sb_e[i].def >= 0) continue;
+        if (my >= py + SB_TOP + row * 26 && my < py + SB_TOP + row * 26 + 24) { *name = sb_e[i].group; return i + 1; }
+        row++;
+    }
+    return 0;
+}
+static void sb_add_centre(int di) {
+    double wx = (pw / 2.0) / zoom + pan_x - NODE_W / 2.0, wy = (ph / 2.0) / zoom + pan_y - 20;
+    int q, k = 0;
+    for (q = 0; q < nnodes; q++) if (fabs(nodes[q].x - wx) < 12 && fabs(nodes[q].y - wy) < 12) k++;   /* a second one lands a little aside */
+    add_node(di, wx + 24 * k, wy + 24 * k);
+}
+static void sb_input(int mx, int my) {   /* called every frame; the press / drag / release of the sidebar */
+    int in_sb = mx >= sb_x && mx < sb_x + SB_W && my >= py && my < py + ph;
+    pal_fill(sb_e, &sb_n, sb_search);
+    sb_clamp();
+    if (in_sb) {
+        double wheel = cb_mouse_wheel();
+        if (wheel != 0) { sb_scroll -= wheel > 0 ? 3 * SB_ROW : -3 * SB_ROW; sb_clamp(); }
+    }
+    if (cb_mouse_pressed(0) && edit_node < 0 && !pal_open) {
+        if (in_sb) {
+            const char *g = NULL;
+            int ci = sb_cat_at(mx, my, &g), it = sb_item_at(mx, my);
+            sb_focus = my >= py + 8 && my < py + 34 && mx >= sb_x + 8 && mx < sb_x + SB_W - 8;
+            if (ci > 0) { sb_scroll = (ci - 1) * SB_ROW; sb_clamp(); }
+            else if (it >= 0 && sb_e[it].def >= 0) { sb_drag = sb_e[it].def; sb_drag_x = mx; sb_drag_y = my; }
+        } else sb_focus = 0;
+    }
+    if (sb_drag >= 0 && !cb_mouse_down(0)) {   /* released: a click adds at the middle of the canvas, a drag at the drop point */
+        int moved = abs(mx - sb_drag_x) + abs(my - sb_drag_y) > 6;
+        if (moved && mx >= px && mx < px + pw && my >= py && my < py + ph) add_node(sb_drag, (mx - px) / zoom + pan_x - NODE_W / 2.0, (my - py) / zoom + pan_y - 12);
+        else if (!moved) sb_add_centre(sb_drag);
+        sb_drag = -1;
+    }
+    if (sb_focus && edit_node < 0 && !pal_open) {   /* typing in the search box */
+        int ch;
+        for (ch = 0; ch < npending; ch++)
+            if (pending[ch] >= 32 && pending[ch] < 127 && sb_len < (int)sizeof sb_search - 1) { sb_search[sb_len++] = pending[ch]; sb_search[sb_len] = 0; sb_scroll = 0; }
+        npending = 0;
+        if (cb_key_pressed(CB_KEY_BACKSPACE) && sb_len > 0) { sb_search[--sb_len] = 0; sb_scroll = 0; }
+        if (cb_key_pressed(CB_KEY_ENTER)) {
+            int r;
+            pal_fill(sb_e, &sb_n, sb_search);
+            for (r = 0; r < sb_n; r++) if (sb_e[r].def >= 0) { sb_add_centre(sb_e[r].def); break; }
+        }
+        if (cb_key_pressed(CB_KEY_ENTER) || cb_key_pressed(CB_KEY_ESCAPE)) sb_focus = 0;
+    }
+}
+static void sb_draw(void) {
+    int i, row = 0, mx = cb_mouse_x(), my = cb_mouse_y(), x = sb_x, y = py;
+    cb_clip(x, y, SB_W, ph);
+    cb_draw_rect(x, y, SB_W, ph, lerpc(T_BG, (cb_rgba){0, 0, 0, 255}, 0.12));
+    cb_draw_rect(x + SB_W - 1, y, 1, ph, T_FRAME);
+    {   /* the search box */
+        const char *shown = sb_len ? sb_search : "Search all nodes";
+        framed(x + 8, y + 8, SB_W - 16, 26, 4, sb_focus ? T_BG : T_FIELD, sb_focus ? T_ACC : T_FRAME);
+        ui_text(shown, x + 16, y + 14, 14, sb_len ? T_INK : T_DIM);
+        if (sb_focus) cb_draw_rect(x + 18 + ui_width(sb_search, 14), y + 13, 1, 16, T_ACC);
+        ui_text(strcmp(kind_text, "post") == 0 ? "post shader nodes" : "surface shader nodes", x + 10, y + 38, 12, T_ACC);
+    }
+    for (i = 0; i < sb_n; i++) {   /* the group words (left column) */
+        if (sb_e[i].def >= 0) continue;
+        {
+            int gy = y + SB_TOP + row * 26, hot = mx >= x + 4 && mx < x + SB_CAT_W && my >= gy && my < gy + 24;
+            cb_rgba gc = group_color(sb_e[i].group);
+            ui_text(sb_e[i].group, x + 8, gy + 4, 13, hot ? lerpc(gc, (cb_rgba){255, 255, 255, 255}, 0.3) : gc);
+        }
+        row++;
+    }
+    cb_clip(x + SB_CAT_W, y + SB_TOP - 2, SB_W - SB_CAT_W, ph - SB_TOP + 2);
+    for (i = 0; i < sb_n; i++) {   /* the list: a heading, then a pill for each node of the group */
+        int ry = y + SB_TOP + i * SB_ROW - sb_scroll;
+        if (ry + SB_ROW < y + SB_TOP || ry > y + ph) continue;
+        if (sb_e[i].def < 0) {
+            cb_draw_rect(x + SB_CAT_W + 6, ry + SB_ROW / 2, SB_W - SB_CAT_W - 16, 1, lerpc(T_BG, group_color(sb_e[i].group), 0.35));
+        } else {
+            cb_rgba gc = group_color(sb_e[i].group);
+            int hot = sb_item_at(mx, my) == i || (sb_drag >= 0 && sb_drag == sb_e[i].def);
+            framed(x + SB_CAT_W + 6, ry + 1, SB_W - SB_CAT_W - 16, SB_ROW - 3, 4, lerpc(T_BG, gc, hot ? 0.45 : 0.28), hot ? T_ACC : gc);
+            ui_text(defs[sb_e[i].def].title, x + SB_CAT_W + 14, ry + 5, 13, T_BRICKTXT);
+        }
+    }
+    cb_clip_end();
+    if (!sb_n) ui_text("nothing matches", x + 12, y + SB_TOP + 4, 13, T_WARN);
+    cb_clip_end();
+    if (sb_drag >= 0 && abs(mx - sb_drag_x) + abs(my - sb_drag_y) > 6) {   /* the ghost of the brick being dragged */
+        cb_rgba gc = group_color(defs[sb_drag].group);
+        cb_clip(px, py, pw, ph);
+        framed(mx - 70, my - 11, 140, 22, 4, lerpc(T_BG, gc, 0.4), gc);
+        ui_text(defs[sb_drag].title, mx - 62, my - 7, 13, T_BRICKTXT);
+        cb_clip_end();
     }
 }
 
 void mf_shed_frame(int x, int y, int w, int h) {
     int i, over;
-    px = x; py = y; pw = w; ph = h;
+    sb_x = x; px = x + SB_W; py = y; pw = w - SB_W; ph = h;   /* the palette takes the left edge, the canvas the rest */
+    x = px; w = pw;
+    sb_input(cb_mouse_x(), cb_mouse_y());
     over = cb_mouse_x() >= x && cb_mouse_x() < x + w && cb_mouse_y() >= y && cb_mouse_y() < y + h;
     if (fitted == 2) { fitted = 1; fit_frames = 15; }
     if (fit_frames > 0) {   /* the window may still be resizing for a few frames: fit again until it is settled or the user takes over */
@@ -883,8 +1032,8 @@ void mf_shed_frame(int x, int y, int w, int h) {
             pan_y -= d.y / zoom;
         }
         if (pal_open && wheel != 0) { pal_scroll -= wheel > 0 ? 3 : -3; }
-        if (edit_node < 0 && !pal_open && cb_key_pressed(CB_KEY_F)) { fit(); fit_frames = 0; }
-        if (edit_node < 0 && !pal_open) {
+        if (edit_node < 0 && !pal_open && !sb_focus && cb_key_pressed(CB_KEY_F)) { fit(); fit_frames = 0; }
+        if (edit_node < 0 && !pal_open && !sb_focus) {
             if (ctrl_held()) {
                 if (cb_key_pressed(CB_KEY_Z)) { if (shift_held()) redo(); else undo(); }
                 else if (cb_key_pressed(CB_KEY_Y)) redo();
@@ -914,7 +1063,7 @@ void mf_shed_frame(int x, int y, int w, int h) {
         if (drag >= 0 && drag_moved) save();
         drag = -1; drag_moved = 0; panning = 0;
     }
-    if (edit_node < 0 && !pal_open) npending = 0;
+    if (edit_node < 0 && !pal_open && !sb_focus) npending = 0;
     if (pal_open) {   /* typing filters the palette, Enter adds the first match, Esc closes */
         int ch;
         for (ch = 0; ch < npending; ch++)
@@ -1016,6 +1165,7 @@ void mf_shed_frame(int x, int y, int w, int h) {
     cb_draw_rect(x, y + h - 30, w, 1, T_FRAME);
     ui_text(edit_node >= 0 ? "typing: Enter confirms, Esc cancels" : pal_open ? "type to search  Enter: add first  click: add  Esc: close" : "right click: add   drag port: wire   shift: select   X: delete   Ctrl+Z/Y   Ctrl+C/V   F: fit", x + 10, y + h - 24, 14, T_DIM);
     cb_clip_end();
+    sb_draw();
 }
 
 void mf_shed_chip(const char *t, int x, int y, int size, int accent) {   /* a rounded label in the C-Vert panel style (the preview's status lines) */

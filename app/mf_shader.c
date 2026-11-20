@@ -189,7 +189,7 @@ void mf_shader_draw_hud(void) {
     int split = mf_shader_split();
     if (!on) return;
     mf_shed_frame(split, 0, cb_screen_width() - split, cb_screen_height());
-    mf_shed_chip(status, 10, 10, 14, 1);
+    mf_shed_chip(status, 10, 34, 14, 1);
     mf_shed_chip(use_model ? "drag: turn   M: sphere   F4: back" : "drag: turn   M: model   F4: back", 10, cb_screen_height() - 34, 14, 0);
 }
 

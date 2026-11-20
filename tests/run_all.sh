@@ -18,4 +18,5 @@ for f in "$HERE"/assets/*.obj; do "$HERE/tools/objinfo.sh" "$f"; done
 "$HERE/tests/run_shader_edit_test.sh"
 "$HERE/tests/run_shader_graph_test.sh"
 "$HERE/tests/run_shader_history_test.sh"
+"$HERE/tests/run_shader_palette_test.sh"
 echo "ALL OK"
