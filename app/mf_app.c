@@ -2299,12 +2299,14 @@ void mf_app_draw3d(void) {
         int edit = k == A.cur && A.mode == MODE_MESH;
         int obj_hot = A.o[k].sel && A.mode == MODE_OBJECT;
         int dense, cull, sw = cb_screen_width(), sh = cb_screen_height();
+        float minpx2;
         if (edit && A.xray) continue;   /* X-ray: the HUD draws this object's whole wireframe, hidden edges too */
         if (!m->topo_ok) mf_build(m);
         /* Every edge is a draw call, and at 30k faces that is the whole frame. So: each vertex goes to the world and the screen ONCE; on a dense
            mesh edges that are off the window, or shorter than 2 pixels (they only blur into a grey haze), are skipped; and on a closed mesh an
            edge between two faces that point away from the camera is hidden by the depth test anyway, so it is not sent. Selected edges always are. */
         dense = m->ne > DENSE_EDGES;
+        minpx2 = m->ne > 3 * DENSE_EDGES ? 16.0f : 4.0f;   /* a very dense mesh: edges under 4 px are haze too (each one is a draw call) */
         cull = m->nboundary == 0 && m->nnonmanifold == 0 && m->nf > 0;
         if (m->nv > A.wcap) {
             mf_vec3 *nw = (mf_vec3 *)realloc(A.wv, (size_t)m->nv * sizeof *nw);
@@ -2348,7 +2350,7 @@ void mf_app_draw3d(void) {
                     const float *pa = &A.sxy[3 * a], *pb = &A.sxy[3 * b];
                     float dx = pa[0] - pb[0], dy = pa[1] - pb[1];
                     if (pa[2] > 0.5f && pb[2] > 0.5f) {
-                        if (dx * dx + dy * dy < 4.0f) continue;
+                        if (dx * dx + dy * dy < minpx2) continue;
                         if ((pa[0] < 0 && pb[0] < 0) || (pa[1] < 0 && pb[1] < 0) || (pa[0] > (float)sw && pb[0] > (float)sw) || (pa[1] > (float)sh && pb[1] > (float)sh)) continue;
                     }
                 }

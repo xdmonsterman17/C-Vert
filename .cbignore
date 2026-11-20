@@ -1,3 +1,4 @@
 # C code in these folders has its own main() or is test code: not compiled into the program
 tests/
 tools/
+archive/

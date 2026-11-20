@@ -1,0 +1,7 @@
+# the workspace around the project: not compiled, not exported, not packed
+tests/
+*.md
+*.sh
+.gitignore
+.cbignore
+.cbnoexport

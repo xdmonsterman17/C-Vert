@@ -11,4 +11,5 @@ const char *mf_shed_take_open(void);                     /* a new file the canva
 int mf_shed_node_count(void);
 int mf_shed_wire_count(void);
 const char *mf_shed_note(void);                          /* "" or what is wrong (no node table, file is not a graph) */
+void mf_shed_chip(const char *text, int x, int y, int size, int accent);   /* a rounded label in the panel style */
 #endif
